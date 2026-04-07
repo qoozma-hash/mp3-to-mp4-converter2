@@ -1,126 +1,160 @@
 import streamlit as st
-import subprocess, os, tempfile, time
+import subprocess, os, tempfile
 from pathlib import Path
 from PIL import Image
 
-st.set_page_config(page_title="MP3 to MP4 Converter", layout="wide", page_icon="🎬")
+st.set_page_config(page_title="MP3 to MP4 Converter - FreeConvert", layout="wide", page_icon="🎬")
 
-PRO_KEYS = {"PRO2026": {"name": "Early User", "daily_limit": 100}, "PREMIUM": {"name": "Premium", "daily_limit": 500}, "TEST": {"name": "Test", "daily_limit": 20}}
-THEMES = {"🟢 Light": {"bg": "#e8f5e9", "text": "#1b5e20", "btn": "#4caf50"}, "🌙 Dark": {"bg": "#121212", "text": "#ffffff", "btn": "#bb86fc"}, "💙 Blue": {"bg": "#e3f2fd", "text": "#0d47a1", "btn": "#2196f3"}, "💜 Purple": {"bg": "#f3e5f5", "text": "#4a148c", "btn": "#9c27b0"}}
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+    * { font-family: 'Roboto', sans-serif; }
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    .main { background: #f8f9fa; padding: 0; max-width: 100%; }
+    .header { background: white; border-bottom: 1px solid #e0e0e0; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-size: 1.8rem; font-weight: 700; color: #6c5ce7; }
+    .nav-links { display: flex; gap: 2rem; color: #333; font-size: 0.95rem; }
+    .nav-links span { cursor: pointer; font-weight: 500; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 3rem 2rem; }
+    .main-title { font-size: 3rem; font-weight: 700; text-align: center; color: #2d3748; margin: 1rem 0 0.5rem 0; }
+    .subtitle { font-size: 1.3rem; text-align: center; color: #718096; margin-bottom: 3rem; }
+    .upload-area { background: white; border: 2px dashed #cbd5e0; border-radius: 12px; padding: 3rem 2rem; text-align: center; margin: 2rem 0; }
+    .add-files-btn { background: #6c5ce7; color: white; padding: 1rem 2rem; border-radius: 8px; font-size: 1.1rem; font-weight: 600; display: inline-block; margin: 1rem 0; cursor: pointer; }
+    .file-item { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; margin: 1rem 0; display: flex; align-items: center; justify-content: space-between; }
+    .file-info { flex: 1; text-align: left; }
+    .file-name { font-size: 1.1rem; font-weight: 600; color: #2d3748; margin-bottom: 0.5rem; }
+    .file-size { font-size: 0.9rem; color: #718096; }
+    .output-select { display: flex; align-items: center; gap: 1rem; margin: 1rem 0; }
+    .output-label { font-size: 1rem; color: #4a5568; font-weight: 500; }
+    .format-badge { background: #6c5ce7; color: white; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600; }
+    .convert-btn { background: #6c5ce7; color: white; padding: 1.2rem 3rem; border-radius: 8px; font-size: 1.2rem; font-weight: 700; border: none; cursor: pointer; width: 100%; margin: 1.5rem 0; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+    .convert-btn:hover { background: #5b4cdb; }
+    .download-section { background: white; border: 2px solid #48bb78; border-radius: 12px; padding: 2rem; text-align: center; margin: 2rem 0; }
+    .download-btn { background: #6c5ce7; color: white; padding: 1.5rem 4rem; border-radius: 8px; font-size: 1.3rem; font-weight: 700; border: none; cursor: pointer; margin: 1rem 0; }
+    .sidebar { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; margin: 1rem 0; }
+    .sidebar-title { font-size: 1rem; font-weight: 600; color: #2d3748; margin-bottom: 1rem; }
+    .sidebar-link { display: block; padding: 0.75rem; color: #4a5568; text-decoration: none; border-radius: 6px; margin: 0.5rem 0; font-size: 0.95rem; }
+    .sidebar-link:hover { background: #f7fafc; color: #6c5ce7; }
+    .footer-info { background: white; border-top: 1px solid #e2e8f0; padding: 2rem; text-align: center; color: #718096; font-size: 0.9rem; margin-top: 3rem; }
+    .stFileUploader {display: none;}
+</style>
+""", unsafe_allow_html=True)
 
-if "daily_count" not in st.session_state: st.session_state.daily_count = 0
-if "last_reset" not in st.session_state: st.session_state.last_reset = time.time()
-if "pro_info" not in st.session_state: st.session_state.pro_info = None
-if "stats" not in st.session_state: st.session_state.stats = {"total": 0, "today": 0, "by_resolution": {}}
-if "selected_theme" not in st.session_state: st.session_state.selected_theme = "🟢 Light"
-if time.time() - st.session_state.last_reset > 86400: st.session_state.daily_count = 0; st.session_state.last_reset = time.time(); st.session_state.stats["today"] = 0
-DAILY_LIMIT = st.session_state.pro_info["daily_limit"] if st.session_state.pro_info else 10
-theme = THEMES[st.session_state.selected_theme]
+st.markdown("""
+<div class="header">
+    <div class="logo">🔄 FreeConvert</div>
+    <div class="nav-links">
+        <span>Convert</span>
+        <span>Compress</span>
+        <span>Tools</span>
+        <span>API</span>
+        <span>Pricing</span>
+    </div>
+    <div>
+        <span style="margin-right: 1rem;">Log In</span>
+        <span style="background: #6c5ce7; color: white; padding: 0.5rem 1rem; border-radius: 6px;">Sign Up</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
-st.markdown(f"""<style>.stApp{{background:{theme["bg"]};color:{theme["text"]}}}.stButton>button{{background:{theme["btn"]};color:white;font-weight:700;border-radius:10px}}.instruction{{font-size:1.2rem;font-weight:600;background:rgba(255,255,255,0.4);padding:1rem;border-radius:8px;border-left:4px solid {theme["btn"]}}}.success-box{{background:rgba(76,175,80,0.3);padding:1rem;border-radius:8px}}.stats-box{{background:rgba(255,255,255,0.5);padding:1rem;border-radius:8px;margin:0.5rem 0}}</style>""", unsafe_allow_html=True)
+st.markdown('<div class="container">', unsafe_allow_html=True)
 
-with st.sidebar:
-    st.header("🎨 Theme")
-    sel = st.selectbox("Choose:", list(THEMES.keys()), index=list(THEMES.keys()).index(st.session_state.selected_theme))
-    if sel != st.session_state.selected_theme: st.session_state.selected_theme = sel; st.rerun()
-    st.divider()
-    st.header("🔑 Pro")
-    if st.session_state.pro_info:
-        st.success(f"✅ {st.session_state.pro_info['name']}")
-        if st.button("Logout"): st.session_state.pro_info = None; st.rerun()
-    else:
-        key = st.text_input("Key:", type="password", placeholder="PRO2026")
-        if st.button("Activate"):
-            if key in PRO_KEYS: st.session_state.pro_info = PRO_KEYS[key]; st.success(f"✅ {PRO_KEYS[key]['name']}"); st.rerun()
-            else: st.error("❌ Invalid")
-    st.divider()
-    st.header("📊 Stats")
-    st.markdown(f'<div class="stats-box">📈 Total: <b>{st.session_state.stats["total"]}</b></div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="stats-box">📅 Today: <b>{st.session_state.stats["today"]}</b></div>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">MP3 to MP4 Converter</h1>', unsafe_allow_html=True)
+st.markdown('<p class="subtitle">Convert MP3 to MP4 online, for free.</p>', unsafe_allow_html=True)
 
-st.title("🎬 MP3 to MP4 Converter")
-st.markdown('<div class="instruction">📌 INSTRUCTION: 1) Theme → 2) Audio → 3) Image → 4) Settings → 5) Convert → 6) Download</div>', unsafe_allow_html=True)
+if 'uploaded_file' not in st.session_state:
+    st.session_state.uploaded_file = None
+if 'converted' not in st.session_state:
+    st.session_state.converted = False
+if 'output_file' not in st.session_state:
+    st.session_state.output_file = None
 
-st.markdown('<div class="instruction">⚙️ STEP 1: Video Settings</div>', unsafe_allow_html=True)
-c1,c2,c3 = st.columns(3)
-with c1:
-    res = st.selectbox("Resolution:", ["144p","240p","360p","480p","720p HD","1080p Full HD","1440p 2K","2160p 4K","16:9","9:16","1:1","4:3"], index=5)
-    rm = {"144p":(256,144),"240p":(426,240),"360p":(640,360),"480p":(854,480),"720p HD":(1280,720),"1080p Full HD":(1920,1080),"1440p 2K":(2560,1440),"2160p 4K":(3840,2160),"16:9":(1920,1080),"9:16":(1080,1920),"1:1":(1080,1080),"4:3":(1024,768)}
-    w,h = rm[res]
-with c2:
-    vc = st.selectbox("Codec:", ["H.264","H.265"], index=0)
-    cm = {"H.264":"libx264","H.265":"libx265"}
-    q = st.select_slider("Quality:", options=["Eco","Standard","High","Max"], value="High")
-    bm = {"Eco":"800k","Standard":"2500k","High":"5000k","Max":"10000k"}
-    fps = st.selectbox("FPS:", [24,30,60], index=1)
-with c3:
-    st.subheader("🔊 Audio")
-    ac = st.selectbox("Codec:", ["AAC","MP3","OPUS"], index=0)
-    ab = st.select_slider("Bitrate:", options=["96k","128k","192k","256k","320k"], value="192k")
-    vol = st.slider("Volume:", 50,200,100)
-    fi = st.checkbox("Fade In")
-    fo = st.checkbox("Fade Out")
+if not st.session_state.uploaded_file:
+    st.markdown('<div class="upload-area">', unsafe_allow_html=True)
+    st.markdown('<div class="add-files-btn">📁 Add More Files</div>', unsafe_allow_html=True)
+    uploaded_file = st.file_uploader("", type=["mp3", "wav", "m4a", "ogg", "flac"], label_visibility="collapsed")
+    if uploaded_file:
+        st.session_state.uploaded_file = uploaded_file
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
-st.markdown(f'<div class="instruction">🎵 STEP 2: Upload Audio (limit: {DAILY_LIMIT}/day)</div>', unsafe_allow_html=True)
-m1,m2 = st.columns([2,1])
-with m1:
-    audios = st.file_uploader("📁 Drop files", type=["mp3","wav","m4a","ogg","flac"], accept_multiple_files=True)
-    if audios:
-        rem = DAILY_LIMIT - st.session_state.daily_count
-        if len(audios)>rem: st.warning(f"⚠️ Remaining: {rem}"); audios=audios[:rem]
-        st.success(f"✅ Uploaded: {len(audios)}")
-with m2:
-    st.markdown('<div class="instruction">🖼️ STEP 3: Image</div>', unsafe_allow_html=True)
-    mode = st.radio("Mode:", ["One for all","Each file"], index=0)
-    if mode=="One for all": img = st.file_uploader("📤 Cover", type=["png","jpg","jpeg","webp"])
-    else: imgs = st.file_uploader("📤 Covers", type=["png","jpg","jpeg","webp"], accept_multiple_files=True)
+if st.session_state.uploaded_file:
+    file = st.session_state.uploaded_file
+    file_size = file.size / (1024 * 1024)
+    
+    st.markdown(f"""
+    <div class="file-item">
+        <div class="file-info">
+            <div class="file-name">🎵 {file.name}</div>
+            <div class="file-size">{file_size:.2f} MB</div>
+        </div>
+        <div class="output-select">
+            <span class="output-label">Output:</span>
+            <span class="format-badge">MP4</span>
+            <span style="cursor: pointer;">⚙️</span>
+            <span style="cursor: pointer;">❌</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown('<div style="background: #f7fafc; padding: 1rem; border-radius: 6px; margin: 1rem 0;">', unsafe_allow_html=True)
+    st.markdown('<span style="color: #4a5568;">Added 1 files</span>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    if not st.session_state.converted:
+        if st.button("▶️ Convert", key="convert_btn"):
+            with st.spinner("Converting..."):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    audio_path = os.path.join(tmpdir, file.name)
+                    with open(audio_path, "wb") as f:
+                        f.write(file.getbuffer())
+                    image_path = os.path.join(tmpdir, "image.jpg")
+                    img = Image.new("RGB", (1920, 1080), color=(108, 92, 231))
+                    img.save(image_path)
+                    output_path = os.path.join(tmpdir, "output.mp4")
+                    try:
+                        cmd = ["ffmpeg", "-y", "-loop", "1", "-i", image_path, "-i", audio_path, "-c:v", "libx264", "-preset", "medium", "-b:v", "2500k", "-r", "30", "-c:a", "aac", "-b:a", "192k", "-vf", "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2", "-shortest", "-pix_fmt", "yuv420p", output_path]
+                        subprocess.run(cmd, check=True, capture_output=True)
+                        with open(output_path, "rb") as f:
+                            st.session_state.output_file = f.read()
+                        st.session_state.converted = True
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error: {str(e)[:200]}")
+    
+    if st.session_state.converted and st.session_state.output_file:
+        st.markdown("""
+        <div class="download-section">
+            <h2 style="color: #48bb78; margin-bottom: 1rem;">✅ Conversion Complete!</h2>
+            <p style="color: #718096; margin-bottom: 1.5rem;">Your file is ready for download</p>
+        """, unsafe_allow_html=True)
+        
+        st.download_button("⬇️ Download MP4", st.session_state.output_file, file_name=Path(st.session_state.uploaded_file.name).stem + ".mp4", mime="video/mp4", key="download_btn")
+        
+        st.markdown("""
+        <button class="convert-btn" style="margin-top: 1rem;">Convert More ➚</button>
+        <p style="color: #718096; font-size: 0.9rem; margin-top: 1.5rem;">Converted files are automatically deleted after 8 hours to protect your privacy. Please download files before they are deleted.</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-st.markdown('<div class="instruction">🎬 STEP 4: Convert</div>', unsafe_allow_html=True)
-btn = st.button("🚀 CONVERT", type="primary", disabled=not(audios and ((mode=="One for all" and img) or (mode=="Each file" and imgs))))
-if btn:
-    if st.session_state.daily_count>=DAILY_LIMIT: st.error(f"❌ Limit: {DAILY_LIMIT}/day"); st.stop()
-    pb = st.progress(0); tx = st.empty(); res = []
-    for i,a in enumerate(audios):
-        tx.text(f"⏳ {i+1}/{len(audios)}: {a.name}")
-        with tempfile.TemporaryDirectory() as td:
-            ap = os.path.join(td,"audio"+Path(a.name).suffix)
-            if mode=="One for all":
-                ip = os.path.join(td,"image.jpg")
-                with open(ip,"wb") as f: f.write(img.getbuffer())
-            else:
-                ip = os.path.join(td,f"image_{i}.jpg")
-                with open(ip,"wb") as f: f.write(imgs[i].getbuffer())
-            op = os.path.join(td,"output.mp4")
-            with open(ap,"wb") as f: f.write(a.getbuffer())
-            vf = f"scale={w}:{h}:force_original_aspect_ratio=decrease,pad={w}:{h}:(ow-iw)/2:(oh-ih)/2"
-            af = []
-            if vol!=100: af.append(f"volume={vol/100}")
-            if fi: af.append("afade=t=in:st=0:d=2")
-            if fo: af.append("afade=t=out:st=0:d=2")
-            afc = ",".join(af) if af else None
-            cmd = ["ffmpeg","-y","-loop","1","-i",ip,"-i",ap,"-c:v",cm[vc],"-preset","medium","-b:v",bm[q],"-r",str(fps),"-c:a",ac.lower(),"-b:a",ab,"-ac","2"]
-            if afc: cmd.extend(["-af",afc])
-            cmd.extend(["-vf",vf,"-shortest","-pix_fmt","yuv420p",op])
-            try:
-                subprocess.run(cmd,check=True,capture_output=True)
-                with open(op,"rb") as f: d = f.read()
-                res.append({"name":Path(a.name).stem+".mp4","data":d,"size":len(d)})
-                st.session_state.daily_count+=1; st.session_state.stats["total"]+=1; st.session_state.stats["today"]+=1
-                if res not in st.session_state.stats["by_resolution"]: st.session_state.stats["by_resolution"][res]=0
-                st.session_state.stats["by_resolution"][res]+=1
-            except Exception as e: res.append({"name":Path(a.name).stem+".mp4","error":str(e)[:100]})
-        pb.progress((i+1)/len(audios))
-    tx.text("✅ Done!")
-    st.divider()
-    st.markdown('<div class="instruction">📥 STEP 5: Download</div>', unsafe_allow_html=True)
-    for r in res:
-        c1,c2 = st.columns([4,1])
-        with c1:
-            if "error" in r: st.error(f"❌ {r['name']}: {r['error']}")
-            else: st.markdown(f'<div class="success-box">✅ {r["name"]} • {r["size"]/1024/1024:.2f} MB</div>', unsafe_allow_html=True)
-        with c2:
-            if "data" in r: st.download_button("⬇️",r["data"],file_name=r["name"],mime="video/mp4",key=r["name"])
-    rem = DAILY_LIMIT - st.session_state.daily_count
-    st.markdown(f'<div style="text-align:center;padding:1rem;background:rgba(255,233,128,0.5);border-radius:8px;font-weight:600;">📊 Remaining: <span style="color:#d32f2f;font-size:1.5rem">{rem}</span> of {DAILY_LIMIT}</div>', unsafe_allow_html=True)
-st.markdown("---")
-st.caption("🔒 Files processed locally • Not stored on server • © 2026 MP3 to MP4 Converter")
+st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown("""
+<div style="max-width: 1000px; margin: 0 auto; padding: 0 2rem;">
+    <div class="sidebar">
+        <div class="sidebar-title">Related Converters:</div>
+        <a href="#" class="sidebar-link">▶️ Convert to MP4</a>
+        <a href="#" class="sidebar-link">🎵 Free Convert to MP3</a>
+        <a href="#" class="sidebar-link">🎬 Online Video Converter</a>
+        <a href="#" class="sidebar-link">🎵 Convert Music to MP3</a>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<div class="footer-info">
+    <p>Converted files are automatically deleted after 8 hours to protect your privacy.</p>
+    <p style="margin-top: 1rem;">© 2024 FreeConvert Clone • Free MP3 to MP4 Converter</p>
+</div>
+""", unsafe_allow_html=True)
