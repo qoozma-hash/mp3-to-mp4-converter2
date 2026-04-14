@@ -1,0 +1,6 @@
+﻿services:
+  - type: web
+    name: mp3-to-mp4-converter
+    buildCommand: "pip install -r requirements.txt && sudo apt-get update && sudo apt-get install -y ffmpeg"
+    startCommand: "streamlit run app.py --server.port $PORT --server.address 0.0.0.0"
+    plan: free
